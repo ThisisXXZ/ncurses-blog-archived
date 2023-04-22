@@ -1,5 +1,6 @@
 # ncurses
-博客园链接 https://www.cnblogs.com/VeniVidiVici/p/17318232.html
+
+博客园链接: https://www.cnblogs.com/VeniVidiVici/p/17318232.html
 
 这次 ENGG1340 课程的 group project 是设计并实现一个 **text-base game**，作为终端上运行的 text-base game，有一个出彩的 GUI 肯定是一个加分项！
 
@@ -120,13 +121,46 @@ WINDOW* submin(WINDOW* parent, int line, int col, int x, int y); // 创建子窗
 
 ```cpp
 WINDOW* win = newwin(30, 30, 0, 0);
-wmvprintw(1, 1, "Joker");     // 注意，这里的 (1, 1) 是对于窗口 win 的相对位置，而不是对于 stdscr 的绝对位置
-wrefresh(win);                // 进行刷新，使内容显示到屏幕上
+wmvprintw(win, 1, 1, "Joker");     // 注意，这里的 (1, 1) 是对于窗口 win 的相对位置，而不是对于 stdscr 的绝对位置
+wrefresh(win);                     // 进行刷新，使内容显示到屏幕上
 or
 WINDOW* sub = subwin(stdscr, 30, 30, 0, 0);    // sub 是标准窗口的子窗口
-wmvprintw(1, 1, "Skull"); 
+wmvprintw(sub, 1, 1, "Skull"); 
 touchwin(stdscr);                              // 由于 sub 与标准窗口共用内存，我们用 touchwin() 函数标记标准窗口被修改即可，而非使用 wrefresh()
 ```
+
+### 子窗口与父窗口
+
+当我们使用 ``wmove()`` 或其他对非标准窗口的交互函数对子窗口进行操作时，父窗口 (或其他子窗口) 输出的内容会暂时消失
+
+解决方法是：在 ``touchwin(fascr)`` 过后，再对父窗口进行**刷新**
+
+即 ``wrefresh(father_scr)`` 或 ``refresh()`` (当父窗口是标准窗口时)
+
+```cpp
+WINDOW* upwin = subwin(stdscr, scrLine / 2, scrCol, 0, 0);
+WINDOW* downwin = subwin(stdscr, scrLine / 2, scrCol, scrLine / 2, 0);
+
+box(upwin, '|', '+');
+box(downwin, '|', '+');
+touchwin(stdscr);
+
+wmove(downwin, 1, 1);
+// refresh();
+int a;
+wscanw(downwin, "%d", &a);
+
+getch();
+```
+
+当未加 ``refresh()`` 时，``upwin`` 窗口的输出内容 (即 box 绘出的边框) 将不会显示
+
+![](https://img2023.cnblogs.com/blog/1757534/202304/1757534-20230422232850168-1495846082.png)
+
+只有将对父窗口重新刷新 ``refresh()`` 之后，所有的输出内容才会显示
+
+![](https://img2023.cnblogs.com/blog/1757534/202304/1757534-20230422233026262-906316120.png)
+
 
 <br />
 
@@ -227,6 +261,40 @@ attroff(COLOR_PAIR(1));                  // 关闭颜色设置，恢复默认
                                          // 此处也可以直接 attron 其他颜色对，而无需先 attroff
 ```
 
+对非标准窗口的操作使用 ``wattron(WINDOW*, ...)`` 与 ``wattroff(WINDOW*, ...)``
+
+<br />
+
+## 其他输出文本效果
+
+``attron()`` 与 ``attroff()`` 不仅可以用来设定颜色，还能够实现许多输出文本效果
+
+这些效果通过一系列常量来代表: ``A_BLINK``, ``A_DIM``, ``A_UNDERLINE``
+
+例如: ``attron(A_BLINK)``，那么在 ``attronoff(A_BLINK)`` 之前输出的文本都将闪烁显示
+
+这些效果的复合 (甚至与颜色的复合) 可以通过常量间的或 ``|`` 运算简单的实现 (这与 windows 对终端文本颜色的操作很相似)
+
+例如 ``attron(A_BLINK | A_UNDERLINE)`` 代表文本闪烁且加下划线显示
+
+这里附上 ncurses 提供的所有输出文本效果常量
+
+```cpp
+A_NORMAL       // 普通字符输出(不加亮显示)
+A_STANDOUT     // 终端字符最亮
+A_UNDERLINE    // 下划线
+A_REVERSE      // 字符反白显示
+A_BLINK        // 闪动显示
+A_DIM          // 半亮显示
+A_BOLD         // 加亮加粗
+A_PROTECT      // 保护模式
+A_INVIS        // 空白显示模式
+A_ALTCHARSET   // 字符交替
+A_CHARTEXT     // 字符掩盖
+COLOR_PAIR(n)  // 前景、背景色设置
+```
+
+
 <br />
 
 
@@ -238,3 +306,4 @@ attroff(COLOR_PAIR(1));                  // 关闭颜色设置，恢复默认
 2. [tiga-Unix/Linux下的Curses库开发指南——第三章curses库窗口](https://blog.csdn.net/tingya/article/details/4800120?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-1-4800120-blog-80753248.235%5Ev28%5Epc_relevant_t0_download&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-1-4800120-blog-80753248.235%5Ev28%5Epc_relevant_t0_download&utm_relevant_index=2) (这好像也是转载的，但是翻译的很好，也很全)
 3. [KeBlog-ncurses](https://kewth.github.io/2019/10/01/ncurses/) (Kewth NB)
 4. [ztq-ncurses库 常用函数及基本使用](https://blog.csdn.net/ztq_12345/article/details/100560314) (有一个通过子窗口实现分屏的程序，gp 的时候可以借鉴，修改一下参数)
+5. [ncurses 输出修饰](https://blog.csdn.net/Rong_Toa/article/details/80763206) (包含了 ncurses 提供的一系列 attr 前缀函数，对输出进行修饰，很有用)
